@@ -8,4 +8,4 @@ else()
     string(STRIP "${COMMIT}" COMMIT)
     set(VERSION "${COMMIT}")
     configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${TO}")
-endif
+endif()
