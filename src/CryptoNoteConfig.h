@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2019, The CryptoNote developers, The Bytecoin developers, TFTN developers
 //
 // This file is part of Bytecoin.
 //
@@ -107,7 +107,7 @@ const char     CRYPTONOTE_BLOCKINDEXES_FILENAME[]            = "blockindexes.bin
 const char     CRYPTONOTE_POOLDATA_FILENAME[]                = "poolstate.bin";
 const char     P2P_NET_DATA_FILENAME[]                       = "p2pstate.bin";
 const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json";
-const char     GENESIS_COINBASE_TX_HEX[]                     = "";
+const char     GENESIS_COINBASE_TX_HEX[]                     = "010501ff00018080a48fc4f95a0282280065d05658c5ff65a95b0ce79f8935439dc8de65926ed17c609fe65dfc992101d5a73859457e608194858184e14c862ad5f43442c49d89999cf47dcd44a4f0c7";
 } // parameters
 
 const char     CRYPTONOTE_NAME[]                             = "TFTN";
