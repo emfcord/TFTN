@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2019, The CryptoNote developers, The Bytecoin developers, TFTN developers
+// Copyright (c) 2012-2019, The CryptoNote developers, The Bytecoin developers, The TFTN developers.
 //
 // This file is part of Bytecoin.
 //
