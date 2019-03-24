@@ -8,24 +8,24 @@ Connecting the daemon to a blockchain
 
 To connect to the daemon to existing blockchain, just start forknoted with the corresponding configuration file.
 
-$ ./forknoted --config-file configs/imaginary_blockchain.conf New blockchains are created by creating new configuration files. Configuration files are created with our blockchain creation form. You can find more about the available configuration options in our documentation.
+$ ./TFTNd --config-file configs/imaginary_blockchain.conf New blockchains are created by creating new configuration files. Configuration files are created with our blockchain creation form. You can find more about the available configuration options in our documentation.
 
 ### Examples
 
-To connect the daemon to the TFTN coin, start forknoted with its corresponding configuration file:
+To connect the daemon to the TFTN coin, start TFTNd with its corresponding configuration file:
 
-$ ./forknoted --config-file configs/TFTN.conf To connect to the TFTN blockchain, start forknoted with its corresponding configuration file:
+$ ./TFTNd --config-file configs/TFTN.conf To connect to the TFTN blockchain, start TFTNd with its corresponding configuration file:
 
-$ ./forknoted --config-file configs/TFTN.conf Starting simplewallet
+$ ./TFTNd --config-file configs/TFTN.conf Starting simplewallet
 
 Simplewallet uses the same configuration file as the daemon.
 
 To start simplewallet:
 
-$ ./simplewallet --config-file configs/imaginary_blockchain.conf Examples
+$ ./TFTN_simplewallet --config-file configs/imaginary_blockchain.conf Examples
 
 Starting simplewallet for the TFTN blockchain:
 
-$ ./simplewallet --config-file configs/TFTN.conf Starting simplewallet for the TFTN blockchain:
+$ ./TFTN_simplewallet --config-file configs/TFTN.conf Starting simplewallet for the TFTN blockchain:
 
-$ ./simplewallet --config-file configs/TFTN.conf
+$ ./TFTN_simplewallet --config-file configs/TFTN.conf
