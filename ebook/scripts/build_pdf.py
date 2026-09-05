@@ -48,14 +48,16 @@ RULE = colors.HexColor("#b8a988")
 FAINT = colors.HexColor("#8d8172")
 PAPER_TINT = colors.HexColor("#fbf9f3")
 
-CHAPTER_WORDS = ["UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE", "DIEZ"]
+CHAPTER_WORDS = ["UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE", "DIEZ", "ONCE"]
 
 CHAPTER_IMAGES = {
     1: ("ch1_barca.jpg", "Punta Escarza, vista desde la barca de Onofre."),
     3: ("ch3_campana.jpg", "La campana hallada entre las rocas del sur."),
     5: ("ch5_mano.jpg", "Algo se movía junto a la campana, bajo el agua."),
-    7: ("ch7_tormenta.jpg", "La noche de las doce luces."),
-    9: ("ch9_escalera.jpg", "Alguien subía la escalera de caracol."),
+    6: ("ch6_pueblo.jpg", "Cala Yunque, al atardecer."),
+    8: ("ch7_tormenta.jpg", "La noche de las doce luces."),
+    10: ("ch10_visita.jpg", "Elías Roth, de pie junto al muelle."),
+    11: ("ch9_escalera.jpg", "Alguien subía la escalera de caracol."),
 }
 
 # ------------------------------------------------------------------ estilos

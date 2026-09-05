@@ -88,20 +88,18 @@ def moon(size, center, radius, glow_color=(250, 244, 222), core_boost=25):
     d2 = ImageDraw.Draw(layer)
     core = tuple(min(255, c + core_boost) for c in glow_color)
     d2.ellipse([cx - radius, cy - radius, cx + radius, cy + radius], fill=core + (235,))
-    # un par de "mares" lunares sutiles, evitando que se agrupen como rasgos de rostro
-    n_spots = random.choice([2, 3])
-    used_angles = []
-    for _ in range(n_spots):
-        while True:
-            ang = random.uniform(0, 2 * math.pi)
-            if all(abs((ang - a + math.pi) % (2 * math.pi) - math.pi) > 1.6 for a in used_angles):
-                break
-        used_angles.append(ang)
-        rr = radius * random.uniform(0.16, 0.30)
-        dist = radius * random.uniform(0.35, 0.65)
-        px, py = cx + math.cos(ang) * dist, cy + math.sin(ang) * dist
-        shade = tuple(max(0, c - 14) for c in glow_color)
-        d2.ellipse([px - rr, py - rr * 0.8, px + rr, py + rr * 0.8], fill=shade + (45,))
+    # sombreado sutil en un borde de la luna (terminador), para dar volumen
+    # esférico sin caer en manchas que se lean como rasgos de una cara.
+    shade_layer = Image.new("RGBA", size, (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shade_layer)
+    shade_off = radius * 0.62
+    sd.ellipse([cx - radius + shade_off, cy - radius, cx + radius + shade_off, cy + radius],
+               fill=(8, 8, 14, 130))
+    shade_layer = shade_layer.filter(ImageFilter.GaussianBlur(radius * 0.28))
+    mask = Image.new("L", size, 0)
+    md = ImageDraw.Draw(mask)
+    md.ellipse([cx - radius, cy - radius, cx + radius, cy + radius], fill=255)
+    layer = Image.composite(Image.alpha_composite(layer, shade_layer), layer, mask)
     return layer
 
 def choppy_waterline(width, base_y, amplitude, n=140, seed=0, roughness=1.0):
@@ -126,6 +124,50 @@ def draw_water(draw, size, base_y, top_color, bottom_color, seed=0, roughness=1.
         pts = [(0, h)] + pts + [(w, h)]
         draw.polygon(pts, fill=col)
 
+def add_fog_layers(img, bands, seed=0):
+    """Superpone bandas de niebla horizontales, translúcidas y difuminadas,
+    a distintas alturas, para dar profundidad atmosférica a una escena.
+    `bands` es una lista de (y_frac, thickness_frac, alpha)."""
+    W, H = img.size
+    rng = np.random.default_rng(seed)
+    fog = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    fd = ImageDraw.Draw(fog)
+    for y_frac, th_frac, alpha in bands:
+        cy = H * y_frac
+        th = H * th_frac
+        n = 6
+        for i in range(n):
+            cx = W * (i + 0.5) / n + rng.uniform(-W * 0.04, W * 0.04)
+            rw = W / n * rng.uniform(0.9, 1.5)
+            rh = th * rng.uniform(0.7, 1.3)
+            fd.ellipse([cx - rw, cy - rh / 2, cx + rw, cy + rh / 2], fill=(225, 225, 230, alpha))
+    fog = fog.filter(ImageFilter.GaussianBlur(min(W, H) * 0.02))
+    img_rgba = img.convert("RGBA")
+    img_rgba.alpha_composite(fog)
+    return img_rgba.convert("RGB")
+
+
+def add_water_glints(img, waterline, moon_center, count=10, seed=0):
+    """Pequeños destellos especulares horizontales bajo la luna, sobre el agua."""
+    W, H = img.size
+    rng = np.random.default_rng(seed)
+    layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(layer)
+    mx, my = moon_center
+    for i in range(count):
+        t = i / max(1, count - 1)
+        y = waterline + t * (H - waterline) * 0.85
+        spread = 20 + t * 90
+        x = mx + rng.uniform(-spread, spread)
+        w = rng.uniform(14, 60) * (1 - t * 0.4)
+        alpha = int(lerp(120, 25, t))
+        ld.ellipse([x - w, y - 2, x + w, y + 2], fill=(235, 232, 214, alpha))
+    layer = layer.filter(ImageFilter.GaussianBlur(2))
+    img_rgba = img.convert("RGBA")
+    img_rgba.alpha_composite(layer)
+    return img_rgba.convert("RGB")
+
+
 def hatched_silhouette(img, polygon_or_draw_fn, bbox, density=0.35, angle=35, color=(20, 16, 14), seed=0):
     """Rellena una máscara con trama de líneas finas (efecto grabado) en vez de negro sólido."""
     pass  # (no usado directamente; el detalle de trama se aplica con líneas explícitas donde hace falta)
@@ -134,7 +176,8 @@ def wrap_text_letterspaced(text, spacing=" "):
     return spacing.join(list(text))
 
 def draw_lighthouse(draw, base_x, base_y, height, band=True, color=(15, 13, 14), light_on=True, beam_dir=1):
-    """Dibuja un faro estilizado (torre + linterna + base) en silueta."""
+    """Dibuja un faro estilizado (torre + linterna + base) en silueta, con una
+    franja de luz lateral que sugiere volumen cilíndrico en vez de un plano liso."""
     tower_top_w = height * 0.11
     tower_bot_w = height * 0.19
     top_y = base_y - height
@@ -147,16 +190,22 @@ def draw_lighthouse(draw, base_x, base_y, height, band=True, color=(15, 13, 14),
         (base_x + tower_top_w, body_top),
         (base_x - tower_top_w, body_top),
     ], fill=color)
-    # franjas
-    if band:
-        n_bands = 4
-        for i in range(n_bands):
-            t0 = i / (n_bands * 2)
-            t1 = t0 + 1 / (n_bands * 2)
-            y0 = lerp(base_y, body_top, t0 * 2)
-            y1 = lerp(base_y, body_top, t1 * 2)
-            w0 = lerp(tower_bot_w, tower_top_w, t0 * 2)
-            w1 = lerp(tower_bot_w, tower_top_w, t1 * 2)
+    # franja de luz rasante en el borde derecho (sugiere volumen cilíndrico)
+    rim = tuple(min(255, c + 34) for c in color)
+    draw.polygon([
+        (base_x + tower_bot_w * 0.62, base_y),
+        (base_x + tower_bot_w * 0.86, base_y),
+        (base_x + tower_top_w * 0.86, body_top),
+        (base_x + tower_top_w * 0.62, body_top),
+    ], fill=rim)
+    # sombra leve en el borde izquierdo, para reforzar el contraste de volumen
+    shade = tuple(max(0, c - 6) for c in color)
+    draw.polygon([
+        (base_x - tower_bot_w, base_y),
+        (base_x - tower_bot_w * 0.78, base_y),
+        (base_x - tower_top_w * 0.78, body_top),
+        (base_x - tower_top_w, body_top),
+    ], fill=shade)
     # linterna (cabina)
     lant_w = tower_top_w * 1.35
     draw.rectangle([base_x - lant_w, body_top - lantern_h, base_x + lant_w, body_top], fill=color)
@@ -390,6 +439,8 @@ def gen_ch1_boat():
     for _ in range(4):
         bird(draw, random.uniform(W * 0.1, W * 0.5), random.uniform(H * 0.15, H * 0.35), random.uniform(16, 26))
 
+    img = add_water_glints(img, horizon, (W * 0.72, H * 0.38), count=9, seed=12)
+    img = add_fog_layers(img, [(0.5, 0.10, 26), (0.62, 0.08, 20)], seed=4)
     img = add_vignette(img, strength=0.5)
     img = add_grain(img, amount=7, seed=2)
     return save(img, "ch1_barca.jpg")
@@ -449,6 +500,7 @@ def gen_ch3_bell():
     reflect = reflect.filter(ImageFilter.GaussianBlur(14))
     img = img.convert("RGBA"); img.alpha_composite(reflect); img = img.convert("RGB")
 
+    img = add_fog_layers(img, [(0.58, 0.09, 22)], seed=17)
     img = add_vignette(img, strength=0.6)
     img = add_grain(img, amount=8, seed=21)
     return save(img, "ch3_campana.jpg")
@@ -490,6 +542,7 @@ def gen_ch5_hand():
         d2 = ImageDraw.Draw(img)
         d2.ellipse([rx - rs, ry - rs * 0.4, rx + rs, ry + rs * 0.4], fill=(4, 4, 6))
 
+    img = add_water_glints(img, waterline, (W * 0.78, H * 0.2), count=8, seed=34)
     img = add_vignette(img, strength=0.68)
     img = add_grain(img, amount=9, seed=33)
     return save(img, "ch5_mano.jpg")
@@ -534,6 +587,7 @@ def gen_ch7_storm():
         y1 = y0 + math.sin(ang) * ln
         draw.line([(x0, y0), (x1, y1)], fill=(180, 185, 200, 30), width=2)
 
+    img = add_fog_layers(img, [(0.48, 0.12, 24), (0.6, 0.08, 18)], seed=62)
     img = add_vignette(img, strength=0.7)
     img = add_grain(img, amount=11, seed=61)
     return save(img, "ch7_tormenta.jpg")
@@ -641,9 +695,108 @@ def gen_epilogue_footprints():
     for _ in range(4):
         bird(draw, random.uniform(W * 0.5, W * 0.95), random.uniform(H * 0.1, H * 0.3), random.uniform(14, 22), color=(30, 24, 22))
 
+    img = add_fog_layers(img, [(0.44, 0.08, 20)], seed=45)
     img = add_vignette(img, strength=0.5)
     img = add_grain(img, amount=7, seed=44)
     return save(img, "epilogo_huellas.jpg")
+
+
+def gen_ch6_pueblo():
+    """Cala Yunque al atardecer: la iglesia en la ladera, ventanas encendidas."""
+    W, H = 1800, 1150
+    img = vertical_gradient((W, H), (24, 20, 38), (150, 96, 84), mid_color=(88, 58, 66), mid_pos=0.55)
+    draw = ImageDraw.Draw(img, "RGBA")
+    m = moon((W, H), (W * 0.16, H * 0.2), 78, glow_color=(247, 231, 196))
+    img = img.convert("RGBA"); img.alpha_composite(m); img = img.convert("RGB")
+    draw = ImageDraw.Draw(img, "RGBA")
+
+    horizon = H * 0.62
+    draw_water(draw, (W, H), horizon, (120, 92, 84), (18, 15, 20), seed=53, roughness=0.5, rows=14)
+
+    # ladera con el pueblo escalonado
+    hill_pts = [(0, H)]
+    for x in np.linspace(0, W, 40):
+        hill_pts.append((x, horizon - (x / W) * H * 0.30 + math.sin(x * 0.01) * 10))
+    hill_pts += [(W, H)]
+    draw.polygon(hill_pts, fill=(14, 11, 14))
+
+    # casas: bloques pequeños escalonados con ventanas encendidas
+    rng = random.Random(77)
+    for i in range(22):
+        t = rng.uniform(0.05, 0.95)
+        hx = t * W
+        hy = horizon - t * H * 0.30 + math.sin(hx * 0.01) * 10 + rng.uniform(2, 14)
+        hw = rng.uniform(28, 60)
+        hh = rng.uniform(26, 50)
+        draw.rectangle([hx - hw / 2, hy - hh, hx + hw / 2, hy], fill=(10, 9, 11))
+        if rng.random() < 0.7:
+            draw.rectangle([hx - hw * 0.18, hy - hh * 0.62, hx + hw * 0.05, hy - hh * 0.30],
+                            fill=(255, 200, 120, 230))
+
+    # iglesia en lo alto
+    cx = W * 0.30
+    cy = horizon - (cx / W) * H * 0.30 + math.sin(cx * 0.01) * 10 + 6
+    draw.polygon([(cx - 46, cy + 90), (cx + 46, cy + 90), (cx + 46, cy - 10), (cx, cy - 70), (cx - 46, cy - 10)],
+                 fill=(8, 7, 9))
+    draw.rectangle([cx - 12, cy - 130, cx + 12, cy - 70], fill=(8, 7, 9))
+    draw.polygon([(cx - 18, cy - 130), (cx + 18, cy - 130), (cx, cy - 156)], fill=(8, 7, 9))
+    draw.rectangle([cx - 4, cy - 158, cx + 4, cy - 150], fill=(8, 7, 9))
+    draw.rectangle([cx - 12, cy - 100, cx + 12, cy - 80], fill=(255, 210, 140, 200))
+
+    for _ in range(5):
+        bird(draw, random.uniform(W * 0.5, W * 0.95), random.uniform(H * 0.1, H * 0.3), random.uniform(14, 24))
+
+    img = add_fog_layers(img, [(0.63, 0.07, 22)], seed=54)
+    img = add_vignette(img, strength=0.55)
+    img = add_grain(img, amount=8, seed=55)
+    return save(img, "ch6_pueblo.jpg")
+
+
+def gen_ch10_visita():
+    """La silueta espectral de Elías Roth, de pie junto al muelle, al atardecer."""
+    W, H = 1800, 1150
+    img = vertical_gradient((W, H), (26, 22, 34), (140, 96, 78), mid_color=(84, 58, 60), mid_pos=0.5)
+    draw = ImageDraw.Draw(img, "RGBA")
+    m = moon((W, H), (W * 0.82, H * 0.22), 70, glow_color=(240, 226, 196))
+    img = img.convert("RGBA"); img.alpha_composite(m); img = img.convert("RGB")
+    draw = ImageDraw.Draw(img, "RGBA")
+
+    horizon = H * 0.56
+    draw_water(draw, (W, H), horizon, (96, 78, 70), (14, 12, 16), seed=81, roughness=0.7, rows=20)
+
+    lx, ly = W * 0.16, horizon - 70
+    draw_lighthouse(draw, lx, ly, H * 0.28, color=(10, 8, 10))
+
+    # muelle de piedra en primer plano
+    draw.polygon([(W * 0.30, horizon + 10), (W * 0.62, horizon + 10), (W * 0.58, H), (W * 0.20, H)], fill=(12, 10, 12))
+
+    # figura espectral de Roth: silueta translúcida con halo, no sólida
+    fx, fy, fh = W * 0.44, horizon + H * 0.20, H * 0.30
+    spectre = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(spectre)
+    figure_silhouette(sd, fx, fy, fh, pose="standing", color=(20, 22, 24, 235))
+    spectre = spectre.filter(ImageFilter.GaussianBlur(1.5))
+    halo = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    hd = ImageDraw.Draw(halo)
+    figure_silhouette(hd, fx, fy, fh, pose="standing", color=(210, 225, 220, 90))
+    halo = halo.filter(ImageFilter.GaussianBlur(14))
+    img = img.convert("RGBA")
+    img.alpha_composite(halo)
+    img.alpha_composite(spectre)
+    img = img.convert("RGB")
+    draw = ImageDraw.Draw(img, "RGBA")
+
+    ripple = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    rd = ImageDraw.Draw(ripple)
+    for i, r in enumerate([30, 60, 95]):
+        rd.ellipse([fx - r, fy + fh * 0.02 - r * 0.25, fx + r, fy + fh * 0.02 + r * 0.25],
+                   outline=(200, 205, 210, 70 - i * 18), width=2)
+    img = img.convert("RGBA"); img.alpha_composite(ripple); img = img.convert("RGB")
+
+    img = add_fog_layers(img, [(0.56, 0.09, 26), (0.7, 0.07, 18)], seed=82)
+    img = add_vignette(img, strength=0.6)
+    img = add_grain(img, amount=9, seed=83)
+    return save(img, "ch10_visita.jpg")
 
 
 if __name__ == "__main__":
@@ -651,6 +804,8 @@ if __name__ == "__main__":
     gen_ch1_boat()
     gen_ch3_bell()
     gen_ch5_hand()
+    gen_ch6_pueblo()
     gen_ch7_storm()
     gen_ch9_stairs()
+    gen_ch10_visita()
     gen_epilogue_footprints()
