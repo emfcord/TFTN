@@ -14,7 +14,7 @@ import { getAudioDurationInSeconds } from "@remotion/media-utils";
 
 // Drop the generated files here to make this composition render:
 //   public/horror/audio/scene1.mp3 .. scene7.mp3, music.mp3
-//   public/horror/images/scene1.jpg .. scene7.jpg
+//   public/horror/images/scene1.png .. scene7.png
 // Duration of each scene is derived automatically from its narration
 // audio's real length (see calculateMetadata below) — no need to hardcode
 // timings by hand.
@@ -28,42 +28,42 @@ type Scene = {
 const SCENES: Scene[] = [
   {
     audio: "horror/audio/scene1.mp3",
-    image: "horror/images/scene1.jpg",
+    image: "horror/images/scene1.png",
     caption:
       "Dicen que las casas viejas nunca están realmente vacías. Marta llevaba tres noches sin dormir bien, desde que se mudó a la casa de su abuela.",
   },
   {
     audio: "horror/audio/scene2.mp3",
-    image: "horror/images/scene2.jpg",
+    image: "horror/images/scene2.png",
     caption:
       "Esa noche escuchó pasos en el ático. Lentos. Pausados. Como si algo contara los escalones, uno por uno.",
   },
   {
     audio: "horror/audio/scene3.mp3",
-    image: "horror/images/scene3.jpg",
+    image: "horror/images/scene3.png",
     caption:
       "Subió con una linterna temblando en la mano. La puerta estaba entreabierta, aunque juraba haberla cerrado con llave.",
   },
   {
     audio: "horror/audio/scene4.mp3",
-    image: "horror/images/scene4.jpg",
+    image: "horror/images/scene4.png",
     caption:
       "En el centro del cuarto había un espejo, cubierto por una sábana vieja. La tela se movió... sin que hubiera viento.",
   },
   {
     audio: "horror/audio/scene5.mp3",
-    image: "horror/images/scene5.jpg",
+    image: "horror/images/scene5.png",
     caption:
       "Cuando la retiró, su reflejo la miró. Pero un segundo tarde. Como si repitiera un movimiento que ella aún no había hecho.",
   },
   {
     audio: "horror/audio/scene6.mp3",
-    image: "horror/images/scene6.jpg",
+    image: "horror/images/scene6.png",
     caption: "Marta sonrió. Y del otro lado del cristal... el reflejo dejó de sonreír.",
   },
   {
     audio: "horror/audio/scene7.mp3",
-    image: "horror/images/scene7.jpg",
+    image: "horror/images/scene7.png",
     caption: "Esa noche, por primera vez, Marta durmió del otro lado del espejo.",
   },
 ];
